@@ -1,4 +1,4 @@
-h5RDMtoolbox
+# openCeFaDB
 
 Library to connect and work with the ooen centrifugal fan database.
 
