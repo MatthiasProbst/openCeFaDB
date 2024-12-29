@@ -47,6 +47,28 @@ This creates the configuration files and downloads some files.
 opencefadb init
 ```
 
+### Reset the database:
+
+If all goes wrong, you can reset the database:
+
+```bash
+opencefadb reset
+```
+
+Call `init` afterward to reinitialize the database.
+
+### Configuration
+
+You can configure which database stores/endpoints you want to use. There
+are some default ones. Which one is used can be configured in the opencefadb-config.ini file. Here,
+multiple profiles can be defined.
+
+Select one, e.g. the test profile:
+
+```bash
+opencefadb config --profile test
+```
+
 ### Info
 
 At all times, you can get information about the database:
@@ -57,11 +79,9 @@ opencefadb info
 
 ### Get the fan parameters
 
-
 ```bash
 opencefadb fan --show-parameters
 ```
-
 
 ### Get help
 
