@@ -1,0 +1,152 @@
+import logging
+import pathlib
+import shutil
+
+import click
+
+from opencefadb import __version__, paths
+from opencefadb import configuration
+from opencefadb import set_logging_level
+from opencefadb.database.core import connect_to_database
+
+logger = logging.getLogger("opencefadb")
+
+_ASCII_ART = r"""
+   ____                    _____     ______    _____  ____  
+  / __ \                  / ____|   |  ____|  |  __ \|  _ \ 
+ | |  | |_ __   ___ _ __ | |     ___| |__ __ _| |  | | |_) |
+ | |  | | '_ \ / _ \ '_ \| |    / _ \  __/ _` | |  | |  _ < 
+ | |__| | |_) |  __/ | | | |___|  __/ | | (_| | |__| | |_) |
+  \____/| .__/ \___|_| |_|\_____\___|_|  \__,_|_____/|____/ 
+        | |                                                 
+        |_|                                                 
+"""
+
+
+@click.group(invoke_without_command=True)
+@click.option('-V', '--version', is_flag=True, help='Show version')
+@click.option('--log-level', help='Set the log level')
+@click.pass_context
+def cli(ctx, version, log_level):
+    click.echo(_ASCII_ART)
+    cfg = configuration.get_config()
+    set_logging_level(cfg.logging_level)
+    if log_level:
+        logger.debug(f"Setting log level to {log_level}...")
+        set_logging_level(log_level)
+        logger.debug(f"Log level set to {logger.level}")
+    if version:
+        click.echo(f'opencefadb version {__version__}')
+        return
+
+
+_cfg = configuration.get_config()
+
+_available_profiles = ', '.join(f"{section}" for section in _cfg._configparser.sections())
+
+
+@cli.command(help=f"Configure the database. The configuration file is located here: {paths['config']}")
+@click.option('--log-level', help='Set the log level')
+@click.option('--profile', help=f'Select the configuration profile. Available options: {_available_profiles}.')
+def config(log_level, profile):
+    if profile:
+        cfg = configuration.get_config()
+        stp = configuration.get_setup()
+        logger.debug(f"Selecting profile {profile}...")
+        cfg.select_profile(profile)
+        stp.profile = profile
+    if log_level:
+        from opencefadb import set_logging_level
+        logger.debug(f"Setting log level to {log_level}...")
+        cfg.logging_level = log_level
+        set_logging_level(log_level)
+        logger.debug(f"Log level set to {logger.level}")
+
+
+@cli.command(help="Initialize the database. This will download all metadata from Zenodo.")
+def init():
+    click.echo('Initializing database...')
+    stp = configuration.get_setup()
+    cfg = configuration.get_config()
+    cfg.select_profile(stp.profile)
+    file_dir = pathlib.Path(cfg['DEFAULT']['rawdata_dir'])
+    metadata_dir = pathlib.Path(cfg['DEFAULT']['metadata_dir'])
+
+    file_dir.mkdir(parents=True, exist_ok=True)
+    metadata_dir.mkdir(parents=True, exist_ok=True)
+
+    logger.debug("Initialized...")
+    logger.debug(f"Metadata directory: {metadata_dir}")
+    logger.debug(f"File directory: {file_dir}")
+
+    logger.debug("Downloading all metadata from zenodo...")
+    from opencefadb.database.dbinit import initialize_database
+    initialize_database(cfg.metadata_directory)
+
+
+@cli.command()
+@click.option('-y', is_flag=True, default=False, help="Answer yes to all questions")
+def reset(y):
+    if y:
+        reset_answer = True
+    else:
+        response = input("Resetting database... This deletes all downloaded files. Are you sure? [y/N]")
+        reset_answer = response.lower() == 'y'
+
+    if reset_answer:
+        logger.debug("Resetting database...")
+        cfg = configuration.get_config()
+        metadata_dir = cfg.metadata_directory
+        rawdata_dir = cfg.rawdata_directory
+        if metadata_dir.exists():
+            shutil.rmtree(metadata_dir)
+        if rawdata_dir.exists():
+            shutil.rmtree(rawdata_dir)
+
+        cfg.delete()
+        stp = configuration.get_setup()
+        stp.delete()
+        logger.debug("Done.")
+        click.echo("Database reset! Call 'opencefadb init' to reinitialize the database")
+    else:
+        click.echo('Aborted...')
+
+
+@cli.command()
+@click.option('--plot', is_flag=True, help='Plots the CAD. Requires special installation. See README.md')
+@click.option('--name', required=False, default="asm", help='name of CAD (asm or fan)')
+@click.option('--show-parameters', required=False, is_flag=True,
+              help='Prints the Fan Properties to the screen. Requires the database to be initialized')
+def fan(name, plot, show_parameters):
+    if plot:
+        try:
+            from opencefadb.cad import plotting
+        except ImportError as e:
+            click.echo(f"Error: {e}")
+            return
+        plotting.plot(name)
+
+    if show_parameters:
+        logger.debug("Connecting to database...")
+        db = connect_to_database()
+
+        click.echo("Fan Properties:")
+        click.echo("---------------")
+        properties = db.select_fan_properties()
+        click.echo(properties)
+
+
+@cli.command()
+def info():
+    cfg = configuration.get_config()
+    click.echo(f"Configuration:")
+    click.echo("--------------")
+    click.echo(f"[{cfg.profile}]")
+    for k in cfg[cfg.profile]:
+        value = cfg[cfg.profile][k]
+        click.echo(f" > {k}: {value}")
+    click.echo("")
+
+
+if __name__ == '__main__':
+    cli()
