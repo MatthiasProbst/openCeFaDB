@@ -1,0 +1,34 @@
+{
+  "@context": {
+    "dcat": "http://www.w3.org/ns/dcat#"
+  },
+  "@graph": [
+    {
+      "@id": "https://zenodo.org/record/14551649",
+      "@type": "dcat:Dataset",
+      "dcat:identifier": "14551649",
+      "dcat:distribution": {
+        "dcat:mediaType": "application/ld+json",
+        "dcat:downloadURL": "https://zenodo.org/records/14551649/files/metadata.jsonld"
+      }
+    },
+    {
+      "@id": "https://zenodo.org/record/14055811",
+      "@type": "dcat:Dataset",
+      "dcat:identifier": "14055811",
+      "dcat:distribution": {
+        "dcat:mediaType": "application/ld+json",
+        "dcat:downloadURL": "https://zenodo.org/records/14055811/files/Standard_Name_Table_for_the_Property_Descriptions_of_Centrifugal_Fans.jsonld"
+      }
+    },
+    {
+      "@id": "https://zenodo.org/record/13351343",
+      "@type": "dcat:Dataset",
+      "dcat:identifier": "13351343",
+      "dcat:distribution": {
+        "dcat:mediaType": "text/turtle",
+        "dcat:downloadURL": "https://zenodo.org/records/13351343/files/ssno.ttl"
+      }
+    }
+  ]
+}

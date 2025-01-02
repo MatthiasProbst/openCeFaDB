@@ -122,8 +122,8 @@ def get_config(overwrite: bool = False) -> OpenCeFaDBConfiguration:
 
     config = configparser.ConfigParser()
     config["DEFAULT"] = _get_default_database_config()
-    config["test"] = _get_test_config()
-    config["test_local_graphdb"] = _get_test_local_graphdb()
+    config["filedb.test"] = _get_test_config()
+    config["local_graphdb.test"] = _get_test_local_graphdb()
     with open(paths["config"], 'w') as f:
         config.write(f)
     return OpenCeFaDBConfiguration(config)

@@ -7,6 +7,7 @@ from opencefadb.configuration import get_config
 from opencefadb.database import connect_to_database
 from opencefadb.database.repositories.zenodo.download import download_metadata_file
 
+__this_dir__ = pathlib.Path(__file__).parent
 logger = logging.getLogger("opencefadb")
 level = logger.level
 for h in logger.handlers:
@@ -14,43 +15,45 @@ for h in logger.handlers:
 
 
 def _get_metadata_datasets():
-    metadata_datasets = {
-        "@context": {
-            "dcat": "http://www.w3.org/ns/dcat#",
-        },
-        "@graph": [
-            {
-                "@id": "https://zenodo.org/record/14551649",
-                "@type": "dcat:Dataset",
-                "dcat:identifier": "14551649",
-                "dcat:distribution": {
-                    "dcat:mediaType": "application/ld+json",
-                    "dcat:downloadURL": "https://zenodo.org/records/14551649/files/metadata.jsonld"
-                }
-            },
-            {
-                "@id": "https://zenodo.org/record/14055811",
-                "@type": "dcat:Dataset",
-                "dcat:identifier": "14055811",
-                "dcat:distribution": {
-                    "dcat:mediaType": "application/ld+json",
-                    "dcat:downloadURL": "https://zenodo.org/records/14055811/files/Standard_Name_Table_for_the_Property_Descriptions_of_Centrifugal_Fans.jsonld"
-                }
-            },
-            {
-                "@id": "https://zenodo.org/record/13351343",
-                "@type": "dcat:Dataset",
-                "dcat:identifier": "13351343",
-                "dcat:distribution": {
-                    "dcat:mediaType": "text/turtle",
-                    "dcat:downloadURL": "https://zenodo.org/records/13351343/files/ssno.ttl"
-                }
-            }
-        ]
-    }
+    db_dataset_config = __this_dir__ / "../db-dataset-config.jsonld"
+    # metadata_datasets = {
+    #     "@context": {
+    #         "dcat": "http://www.w3.org/ns/dcat#",
+    #     },
+    #     "@graph": [
+    #         {
+    #             "@id": "https://zenodo.org/record/14551649",
+    #             "@type": "dcat:Dataset",
+    #             "dcat:identifier": "14551649",
+    #             "dcat:distribution": {
+    #                 "dcat:mediaType": "application/ld+json",
+    #                 "dcat:downloadURL": "https://zenodo.org/records/14551649/files/metadata.jsonld"
+    #             }
+    #         },
+    #         {
+    #             "@id": "https://zenodo.org/record/14055811",
+    #             "@type": "dcat:Dataset",
+    #             "dcat:identifier": "14055811",
+    #             "dcat:distribution": {
+    #                 "dcat:mediaType": "application/ld+json",
+    #                 "dcat:downloadURL": "https://zenodo.org/records/14055811/files/Standard_Name_Table_for_the_Property_Descriptions_of_Centrifugal_Fans.jsonld"
+    #             }
+    #         },
+    #         {
+    #             "@id": "https://zenodo.org/record/13351343",
+    #             "@type": "dcat:Dataset",
+    #             "dcat:identifier": "13351343",
+    #             "dcat:distribution": {
+    #                 "dcat:mediaType": "text/turtle",
+    #                 "dcat:downloadURL": "https://zenodo.org/records/13351343/files/ssno.ttl"
+    #             }
+    #         }
+    #     ]
+    # }
 
+    assert db_dataset_config.exists(), f"Database dataset config file not found: {db_dataset_config}"
     g = rdflib.Graph()
-    g.parse(data=metadata_datasets, format="json-ld")
+    g.parse(source=db_dataset_config, format="json-ld")
     return g
 
 
