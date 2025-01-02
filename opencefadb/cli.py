@@ -115,10 +115,17 @@ def reset(y):
 @cli.command()
 @click.option('--plot', is_flag=True, help='Plots the CAD. Requires special installation. See README.md')
 @click.option('--name', required=False, default="asm", help='name of CAD (asm or fan)')
+@click.option('--download', required=False, type=click.Path(), help='Download the CAD file(s)', show_default=True)
 @click.option('--show-parameters', required=False, is_flag=True,
               help='Prints the Fan Properties to the screen. Requires the database to be initialized')
-def fan(name, plot, show_parameters):
-    if plot:
+def fan(plot, name, download, show_parameters):
+    if download:
+        db = connect_to_database()
+        target_dir = pathlib.Path(download).resolve().absolute()
+        click.echo(f"Downloading CAD file to '{target_dir}'...")
+        filename = db.download_cad_file(target_dir=download)
+        click.echo(f"...finished. File saved as {filename}")
+    if plot:  # experimental!
         try:
             from opencefadb.cad import plotting
         except ImportError as e:
