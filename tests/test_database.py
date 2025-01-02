@@ -19,6 +19,11 @@ class TestDatabase(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree("./test_download")
 
+    def test_singleton(self):
+        db1 = connect_to_database()
+        db2 = connect_to_database()
+        self.assertIs(db1, db2)
+
     def test_read_dataset_files(self):
         dataset = dbinit._get_metadata_datasets()
         self.assertIsInstance(dataset, rdflib.Graph)

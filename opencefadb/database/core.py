@@ -19,6 +19,8 @@ from opencefadb.utils import download_file
 
 logger = logging.getLogger("opencefadb")
 
+_db_instance = None
+
 
 def _parse_to_qname(uri: rdflib.URIRef):
     uri_str = str(uri)
@@ -85,6 +87,9 @@ class OpenCeFaDB(GenericLinkedDatabase):
 
 def connect_to_database() -> OpenCeFaDB:
     """Connects to the database according to the configuration."""
+    global _db_instance
+    if _db_instance:
+        return _db_instance
     cfg = get_config()
     store_manager = DataStoreManager()
     if cfg.rawdata_store == "hdf5_file_db":
@@ -100,5 +105,5 @@ def connect_to_database() -> OpenCeFaDB:
         store_manager.add_store("rdf_db", rdf_file_store)
     else:
         raise TypeError(f"Metadata store {cfg.metadata_datastore} not supported.")
-
-    return OpenCeFaDB(store_manager)
+    _db_instance = OpenCeFaDB(store_manager)
+    return _db_instance
