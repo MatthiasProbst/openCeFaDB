@@ -8,9 +8,14 @@ from gldb import GenericLinkedDatabase
 from gldb.stores import DataStoreManager
 
 from opencefadb.configuration import get_config
-from opencefadb.database.query_templates.sparql import SELECT_FAN_PROPERTIES, SELECT_ALL
+from opencefadb.database.query_templates.sparql import (
+    SELECT_FAN_PROPERTIES,
+    SELECT_ALL,
+    SELECT_FAN_CAD_FILE
+)
 from opencefadb.database.stores.rdf_stores.filedb.hdf5filedb import HDF5FileDB
 from opencefadb.database.stores.rdf_stores.rdffiledb.rdffilestore import RDFFileStore
+from opencefadb.utils import download_file
 
 logger = logging.getLogger("opencefadb")
 
@@ -65,11 +70,20 @@ class OpenCeFaDB(GenericLinkedDatabase):
             var.pop("rdf:type")
         return pd.DataFrame(variables.values())
 
+    def download_cad_file(self, target_dir: Union[str, pathlib.Path]):
+        """Queries the RDF database for the iges cad file"""
+        bindings = self.execute_query("rdf_db", SELECT_FAN_CAD_FILE).bindings
+        assert len(bindings) == 1, f"Expected one CAD file, got {len(bindings)}"
+        download_url = bindings[0]["downloadURL"]
+        _guess_filenames = download_url.rsplit("/", 1)[-1]
+        target_dir = pathlib.Path(target_dir)
+        return download_file(bindings[0]["downloadURL"], target_dir / _guess_filenames)
+
     def select_all(self):
         return self.execute_query("rdf_db", SELECT_ALL).bindings
 
 
-def connect_to_database():
+def connect_to_database() -> OpenCeFaDB:
     """Connects to the database according to the configuration."""
     cfg = get_config()
     store_manager = DataStoreManager()

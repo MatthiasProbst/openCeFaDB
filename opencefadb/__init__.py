@@ -51,3 +51,7 @@ def set_logging_level(level: Union[int, str]):
 
     return _logger.level
 
+
+from .database import connect_to_database
+
+__all__ = ['connect_to_database', 'set_logging_level']

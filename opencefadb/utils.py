@@ -1,13 +1,15 @@
 import logging
+import pathlib
 
 import requests
 
 logger = logging.getLogger("opencefadb")
 
 
-def download_metadata_file(download_url, target_filename):
-    """Downloads the metadata.json from a Zenodo record"""
-    logger.debug(f"Downloading metadata file from zenodo record {download_url}...")
+def download_file(download_url, target_filename) -> pathlib.Path:
+    """Downloads from a URL"""
+    target_filename = pathlib.Path(target_filename)
+    logger.debug(f"Downloading metadata file from URL {download_url}...")
     response = requests.get(download_url)
     response.raise_for_status()
 
@@ -16,3 +18,4 @@ def download_metadata_file(download_url, target_filename):
 
     assert target_filename.exists(), f"File {target_filename} does not exist."
     logger.debug(f"Download successful.")
+    return target_filename

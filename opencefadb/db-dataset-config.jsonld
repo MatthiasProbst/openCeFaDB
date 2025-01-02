@@ -4,15 +4,6 @@
   },
   "@graph": [
     {
-      "@id": "https://zenodo.org/record/14551649",
-      "@type": "dcat:Dataset",
-      "dcat:identifier": "14551649",
-      "dcat:distribution": {
-        "dcat:mediaType": "application/ld+json",
-        "dcat:downloadURL": "https://zenodo.org/records/14551649/files/metadata.jsonld"
-      }
-    },
-    {
       "@id": "https://zenodo.org/record/14055811",
       "@type": "dcat:Dataset",
       "dcat:identifier": "14055811",
@@ -29,6 +20,25 @@
         "dcat:mediaType": "text/turtle",
         "dcat:downloadURL": "https://zenodo.org/records/13351343/files/ssno.ttl"
       }
+    },
+    {
+      "@id": "https://zenodo.org/record/14551649",
+      "@type": "dcat:Dataset",
+      "dcat:identifier": "14551649",
+      "dcat:distribution": [
+      {
+        "dcat:mediaType": "application/ld+json",
+        "dcat:downloadURL": "https://zenodo.org/records/14551649/files/metadata.jsonld",
+        "dcat:byteSize": 15927,
+        "dcat:accessURL": "https://doi.org/10.5281/zenodo.14551649"
+      },
+      {
+        "dcat:mediaType": "model/iges",
+        "dcat:downloadURL": "https://zenodo.org/records/14551649/files/cefa_asm_v1.igs",
+        "dcat:byteSize": 14278906,
+        "dcat:accessURL": "https://doi.org/10.5281/zenodo.14551649"
+      }
+    ]
     }
   ]
 }

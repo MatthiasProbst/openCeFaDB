@@ -13,4 +13,17 @@ WHERE {
 }
 """)
 
+SELECT_FAN_CAD_FILE = SparqlQuery("""
+PREFIX schema: <http://schema.org/>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX dcat: <http://www.w3.org/ns/dcat#>
+
+SELECT ?downloadURL
+WHERE {
+  <https://www.wikidata.org/wiki/Q131549102> dcterms:hasPart ?part .
+  ?part dcat:distribution ?distribution .
+  ?distribution dcat:downloadURL ?downloadURL .
+}
+""")
+
 SELECT_ALL = SparqlQuery("SELECT * WHERE {?s ?p ?o}")
