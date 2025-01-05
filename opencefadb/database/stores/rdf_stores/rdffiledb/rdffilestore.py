@@ -2,6 +2,7 @@ import logging
 import pathlib
 
 import rdflib
+from gldb.query.query import QueryResult
 from gldb.query.rdfstorequery import SparqlQuery
 from gldb.stores import RDFStore
 
@@ -15,12 +16,15 @@ class RDFFileStore(RDFStore):
         self._graphs = {}
         self._expected_file_extensions = {".ttl", ".rdf", ".jsonld"}
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__} (n_files={len(self._filenames)})>"
+
     @property
     def expected_file_extensions(self):
         return self._expected_file_extensions
 
-    def execute_query(self, query: SparqlQuery):
-        return query.execute(self.graph)
+    def execute_query(self, query: SparqlQuery) -> QueryResult:
+        return QueryResult(query=query, result=query.execute(self.graph))
 
     def upload_file(self, filename) -> bool:
         filename = pathlib.Path(filename)

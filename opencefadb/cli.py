@@ -8,6 +8,7 @@ from opencefadb import __version__, paths
 from opencefadb import configuration
 from opencefadb import set_logging_level
 from opencefadb.database.core import connect_to_database
+from opencefadb.database.query_templates.sparql import SELECT_FAN_PROPERTIES
 
 logger = logging.getLogger("opencefadb")
 
@@ -49,18 +50,24 @@ _available_profiles = ', '.join(f"{section}" for section in _cfg._configparser.s
 @click.option('--log-level', help='Set the log level')
 @click.option('--profile', help=f'Select the configuration profile. Available options: {_available_profiles}.')
 def config(log_level, profile):
+    click.echo(f"Configuration file: {pathlib.Path(paths['config']).resolve().absolute()}")
+    cfg = configuration.get_config()
     if profile:
-        cfg = configuration.get_config()
         stp = configuration.get_setup()
         logger.debug(f"Selecting profile {profile}...")
         cfg.select_profile(profile)
         stp.profile = profile
+        click.echo(f"Selected profile: {profile}")
+        click.echo(cfg)
+        return
     if log_level:
         from opencefadb import set_logging_level
         logger.debug(f"Setting log level to {log_level}...")
         cfg.logging_level = log_level
         set_logging_level(log_level)
         logger.debug(f"Log level set to {logger.level}")
+        return
+    click.echo(cfg)
 
 
 @cli.command(help="Initialize the database. This will download all metadata from Zenodo.")
@@ -69,6 +76,8 @@ def init():
     stp = configuration.get_setup()
     cfg = configuration.get_config()
     cfg.select_profile(stp.profile)
+    click.echo(f' > Selected profile: {stp.profile}')
+
     file_dir = pathlib.Path(cfg['DEFAULT']['rawdata_dir'])
     metadata_dir = pathlib.Path(cfg['DEFAULT']['metadata_dir'])
 
@@ -79,9 +88,11 @@ def init():
     logger.debug(f"Metadata directory: {metadata_dir}")
     logger.debug(f"File directory: {file_dir}")
 
+    click.echo(" > Downloading all metadata from zenodo...")
     logger.debug("Downloading all metadata from zenodo...")
     from opencefadb.database.dbinit import initialize_database
     initialize_database(cfg.metadata_directory)
+    click.echo("...done")
 
 
 @cli.command()
@@ -116,9 +127,10 @@ def reset(y):
 @click.option('--plot', is_flag=True, help='Plots the CAD. Requires special installation. See README.md')
 @click.option('--name', required=False, default="asm", help='name of CAD (asm or fan)')
 @click.option('--download', required=False, type=click.Path(), help='Download the CAD file(s)', show_default=True)
-@click.option('--show-parameters', required=False, is_flag=True,
+@click.option('-v', '--verbose', required=False, is_flag=True, help='Prints additional information')
+@click.option('--print-properties', required=False, is_flag=True,
               help='Prints the Fan Properties to the screen. Requires the database to be initialized')
-def fan(plot, name, download, show_parameters):
+def fan(plot, name, download, verbose, print_properties):
     if download:
         db = connect_to_database()
         target_dir = pathlib.Path(download).resolve().absolute()
@@ -133,13 +145,18 @@ def fan(plot, name, download, show_parameters):
             return
         plotting.plot(name)
 
-    if show_parameters:
+    if print_properties:
         logger.debug("Connecting to database...")
         db = connect_to_database()
 
+        properties = db.select_fan_properties()
+        if verbose:
+            click.echo("Query:")
+            click.echo("------")
+            click.echo(SELECT_FAN_PROPERTIES.sparql_query)
+            click.echo("")
         click.echo("Fan Properties:")
         click.echo("---------------")
-        properties = db.select_fan_properties()
         click.echo(properties)
 
 

@@ -1,19 +1,21 @@
 import logging
 import pathlib
+from typing import Any
 from typing import Union
 
 import pandas as pd
 import rdflib
 from gldb import GenericLinkedDatabase
+from gldb.query import Query
 from gldb.stores import DataStoreManager
 
 from opencefadb.configuration import get_config
 from opencefadb.database.query_templates.sparql import (
     SELECT_FAN_PROPERTIES,
     SELECT_ALL,
-    SELECT_FAN_CAD_FILE
+    SELECT_FAN_CAD_FILE,
+    SELECT_ALL_OPERATION_POINTS
 )
-from opencefadb.database.stores.rdf_stores.filedb.hdf5filedb import HDF5FileDB
 from opencefadb.database.stores.rdf_stores.rdffiledb.rdffilestore import RDFFileStore
 from opencefadb.utils import download_file
 
@@ -30,6 +32,13 @@ def _parse_to_qname(uri: rdflib.URIRef):
     return uri_str
 
 
+class QueryResult:
+
+    def __init__(self, query: Query, result: Any):
+        self.query = query
+        self.result = result
+
+
 class OpenCeFaDB(GenericLinkedDatabase):
 
     def __init__(self, store_manager: DataStoreManager):
@@ -39,10 +48,23 @@ class OpenCeFaDB(GenericLinkedDatabase):
     def store_manager(self) -> DataStoreManager:
         return self._store_manager
 
+    def upload_hdf(self, filename: pathlib.Path):
+        """Uploads a file to all stores in the store manager. Not all stores may support this operation.
+        This is then skipped."""
+        filename = pathlib.Path(filename)
+        self.store_manager.stores.get("hdf_db").upload_file(filename)
+        # get the metadata:
+        cfg = get_config()
+        import h5rdmtoolbox as h5tbx
+        meta_filename = cfg.metadata_directory / f"{filename.stem}.jsonld"
+        with open(meta_filename, "w") as f:
+            f.write(h5tbx.dump_jsonld(filename, indent=2))
+        self.store_manager.stores.get("rdf_db").upload_file(meta_filename)
+
     def linked_upload(self, filename: Union[str, pathlib.Path]):
         raise NotImplemented("Linked upload not yet implemented")
 
-    def select_fan_properties(self) -> pd.DataFrame:
+    def select_fan_properties(self):
         def _parse_term(term):
             if isinstance(term, rdflib.URIRef):
                 return _parse_to_qname(term)
@@ -50,8 +72,8 @@ class OpenCeFaDB(GenericLinkedDatabase):
                 return term.value
             return term
 
-        bindings = self.execute_query("rdf_db", SELECT_FAN_PROPERTIES).bindings
-        result_data = [{str(k): _parse_term(v) for k, v in binding.items()} for binding in bindings]
+        result = self.execute_query("rdf_db", SELECT_FAN_PROPERTIES)
+        result_data = [{str(k): _parse_term(v) for k, v in binding.items()} for binding in result.result.bindings]
         variables = {}
         for data in result_data:
             if data["parameter"] not in variables:
@@ -74,15 +96,19 @@ class OpenCeFaDB(GenericLinkedDatabase):
 
     def download_cad_file(self, target_dir: Union[str, pathlib.Path]):
         """Queries the RDF database for the iges cad file"""
-        bindings = self.execute_query("rdf_db", SELECT_FAN_CAD_FILE).bindings
+        query_result = self.execute_query("rdf_db", SELECT_FAN_CAD_FILE)
+        bindings = query_result.result.bindings
         assert len(bindings) == 1, f"Expected one CAD file, got {len(bindings)}"
         download_url = bindings[0]["downloadURL"]
         _guess_filenames = download_url.rsplit("/", 1)[-1]
         target_dir = pathlib.Path(target_dir)
         return download_file(bindings[0]["downloadURL"], target_dir / _guess_filenames)
 
-    def select_all(self):
-        return self.execute_query("rdf_db", SELECT_ALL).bindings
+    def select_all(self) -> QueryResult:
+        return self.execute_query("rdf_db", SELECT_ALL)
+
+    def select_all_operation_points(self):
+        result = self.execute_query("rdf_db", SELECT_ALL_OPERATION_POINTS)
 
 
 def connect_to_database() -> OpenCeFaDB:
@@ -93,9 +119,13 @@ def connect_to_database() -> OpenCeFaDB:
     cfg = get_config()
     store_manager = DataStoreManager()
     if cfg.rawdata_store == "hdf5_file_db":
+        from opencefadb.database.stores.filedb.hdf5filedb import HDF5FileDB
         store_manager.add_store("hdf_db", HDF5FileDB())
+    elif cfg.rawdata_store == "hdf5_sql_db":
+        from opencefadb.database.stores.filedb.hdf5sqldb import HDF5SqlDB
+        store_manager.add_store("hdf_db", HDF5SqlDB())
     else:
-        raise TypeError(f"Raw data store {cfg.rawdata_store} not (yet) supported.")
+        raise TypeError(f"Raw data store '{cfg.rawdata_store}' not (yet) supported.")
     if cfg.metadata_datastore == "rdf_file_db":
         rdf_file_store = RDFFileStore()
         for filename in cfg.metadata_directory.glob("*.jsonld"):

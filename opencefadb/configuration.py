@@ -7,6 +7,8 @@ from opencefadb import paths
 
 logger = logging.getLogger("opencefadb")
 
+_config = None
+
 
 def _get_default_database_config():
     return {
@@ -39,12 +41,30 @@ def _get_test_local_graphdb():
     }
 
 
+def _get_test_local_sql():
+    return {
+        "rawdata_store": "hdf5_sql_db",
+        "log_level": str(logging.DEBUG),
+        "sql.host": "localhost",
+        "sql.port": "5432",
+    }
+
+
 class OpenCeFaDBConfiguration:
 
     def __init__(self, configparser: configparser.ConfigParser):
         self._configparser = configparser
         stp = get_setup()
         self.profile = stp.profile
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} ({self.profile})>"
+
+    def __str__(self) -> str:
+        out = f"Configuration profile: {self.profile}\n"
+        for k in self[self.profile]:
+            out += f" > {k}: {self[self.profile][k]}\n"
+        return out
 
     def delete(self):
         _bak = paths["config"].with_suffix(".ini.bak")
@@ -115,18 +135,25 @@ class OpenCeFaDBConfiguration:
 
 def get_config(overwrite: bool = False) -> OpenCeFaDBConfiguration:
     """Initialize the configuration."""
+    global _config
+    if _config:
+        return _config
+
     logger.debug(f"Initializing config file {paths['config']}...")
     if paths["config"].exists() and not overwrite:
         logger.debug(f"Config file {paths['config']} already exists")
-        return OpenCeFaDBConfiguration(_read_config())
+        _config = OpenCeFaDBConfiguration(_read_config())
+        return _config
 
     config = configparser.ConfigParser()
     config["DEFAULT"] = _get_default_database_config()
-    config["filedb.test"] = _get_test_config()
+    config["test"] = _get_test_config()
     config["local_graphdb.test"] = _get_test_local_graphdb()
+    config["local_sql.test"] = _get_test_local_sql()
     with open(paths["config"], 'w') as f:
         config.write(f)
-    return OpenCeFaDBConfiguration(config)
+    _config = OpenCeFaDBConfiguration(config)
+    return _config
 
 
 def _read_config() -> configparser.ConfigParser:
