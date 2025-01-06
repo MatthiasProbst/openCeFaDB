@@ -23,7 +23,6 @@ class TestDatabase(unittest.TestCase):
         db = connect_to_database()
         initialize_database(self._cfg.metadata_directory)
 
-
     def tearDown(self):
         shutil.rmtree("./test_download")
         self._cfg.select_profile(self._current_profile)

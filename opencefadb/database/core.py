@@ -52,14 +52,30 @@ class OpenCeFaDB(GenericLinkedDatabase):
         """Uploads a file to all stores in the store manager. Not all stores may support this operation.
         This is then skipped."""
         filename = pathlib.Path(filename)
-        self.store_manager.stores.get("hdf_db").upload_file(filename)
+        hdf_db_id = self.store_manager.stores.get("hdf_db").upload_file(filename)
         # get the metadata:
         cfg = get_config()
         import h5rdmtoolbox as h5tbx
         meta_filename = cfg.metadata_directory / f"{filename.stem}.jsonld"
         with open(meta_filename, "w") as f:
-            f.write(h5tbx.dump_jsonld(filename, indent=2))
+            f.write(h5tbx.dump_jsonld(filename, indent=2, blank_node_iri_base="https://local.org/"))
         self.store_manager.stores.get("rdf_db").upload_file(meta_filename)
+
+        # now link both items:
+        g = rdflib.Graph()
+        g.parse(meta_filename, format="json-ld")
+        sparql = f"""
+        PREFIX hdf5: <http://purl.allotrope.org/ontologies/hdf5/1.8#>
+        
+        SELECT ?h5id
+        WHERE {{
+            ?h5id a hdf5:File .
+        }}
+        LIMIT 1
+        """
+        result = g.query(sparql)
+        print(str(result.bindings[0].get(rdflib.Variable("h5id"))))
+        
 
     def linked_upload(self, filename: Union[str, pathlib.Path]):
         raise NotImplemented("Linked upload not yet implemented")

@@ -6,6 +6,8 @@ import sqlite3
 from gldb import RawDataStore
 from gldb.query import RawDataStoreQuery, QueryResult
 
+from opencefadb.ontologies import dcat
+
 logger = logging.getLogger("opencefadb")
 
 
@@ -27,12 +29,16 @@ class HDF5SqlDB(RawDataStore):
     def __init__(self):
         from ....configuration import get_config
         cfg = get_config()
-        self._connection = self._initialize_database(cfg.rawdata_directory / "hdf5sql.db")
+        self._hdf5_file_table_name = "hdf5_files"
+        self._sql_base_uri = "http://local.org/sqlite3/"
+        self._db_path = str((cfg.rawdata_directory / "hdf5sql.db").resolve().absolute()).replace('\\', '/')
+        self._endpointURL = rf"file://{self._db_path}"
+        self._connection = self._initialize_database(self._db_path)
         self._filenames = {}
         self._expected_file_extensions = {".hdf", ".hdf5", ".h5"}
 
     def __repr__(self):
-        return f"<{self.__class__.__name__}>"
+        return f"<{self.__class__.__name__} (Endpoint URL={self._endpointURL})>"
 
     def upload_file(self, filename):
         return self._insert_hdf5_reference(self._connection, filename)
@@ -49,13 +55,12 @@ class HDF5SqlDB(RawDataStore):
         cursor.execute(query.sql_query, params)
         return cursor.fetchall()
 
-    @classmethod
-    def _initialize_database(cls, db_path="hdf5_files.db"):
+    def _initialize_database(self, db_path="hdf5_files.db"):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS hdf5_files (
+        cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS {self._hdf5_file_table_name} (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             file_path TEXT NOT NULL UNIQUE,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -85,3 +90,25 @@ class HDF5SqlDB(RawDataStore):
         if self._connection:
             self._connection.close()
             logger.debug("Database connection closed.")
+
+    def generate_mapping_dataset(self, identifier):
+        endpoint_url = self._endpointURL
+        endpoint_url_file_name = endpoint_url.rsplit('/', 1)[-1]
+        dataservice_id = f"{self._sql_base_uri}{endpoint_url_file_name}"
+
+        data_service = dcat.DataService(
+            id=dataservice_id,
+            title="sqlite3 Database",
+            endpointURL=endpoint_url,
+            servesDataset=dcat.Dataset(
+                id=f"{self._sql_base_uri}12345",
+                title=f"SQL Table '{self._hdf5_file_table_name}'",
+                identifier=self._hdf5_file_table_name,
+                distribution=dcat.Distribution(
+                    id=f"{self._sql_base_uri}12345",
+                    identifier=identifier,
+                    mediaType="application/vnd.sqlite3",
+                )
+            )
+        )
+        return data_service
