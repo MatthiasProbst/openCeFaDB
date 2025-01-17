@@ -44,6 +44,10 @@ class OpenCeFaDB(GenericLinkedDatabase):
     def __init__(self, store_manager: DataStoreManager):
         self._store_manager = store_manager
 
+    def __repr__(self):
+        sotre_names = ", ".join([store_name for store_name in self.store_manager.stores.keys()])
+        return f"OpenCeFaDB(store_manager={sotre_names})"
+
     @property
     def store_manager(self) -> DataStoreManager:
         return self._store_manager
@@ -74,8 +78,10 @@ class OpenCeFaDB(GenericLinkedDatabase):
         LIMIT 1
         """
         result = g.query(sparql)
-        print(str(result.bindings[0].get(rdflib.Variable("h5id"))))
-        
+        # print(str(result.bindings[0].get(rdflib.Variable("h5id"))))
+        # TODO: link the resources using what? owl: sameAs?
+        self.store_manager["rdf_db"].link_resources(hdf_db_id, str(result.bindings[0].get(rdflib.Variable("h5id"))))
+        return hdf_db_id
 
     def linked_upload(self, filename: Union[str, pathlib.Path]):
         raise NotImplemented("Linked upload not yet implemented")
@@ -127,7 +133,7 @@ class OpenCeFaDB(GenericLinkedDatabase):
         result = self.execute_query("rdf_db", SELECT_ALL_OPERATION_POINTS)
 
 
-def connect_to_database() -> OpenCeFaDB:
+def connect_to_database(profile="DEFAULT") -> OpenCeFaDB:
     """Connects to the database according to the configuration."""
     global _db_instance
     if _db_instance:
@@ -141,7 +147,8 @@ def connect_to_database() -> OpenCeFaDB:
         from opencefadb.database.stores.filedb.hdf5sqldb import HDF5SqlDB
         store_manager.add_store("hdf_db", HDF5SqlDB())
     else:
-        raise TypeError(f"Raw data store '{cfg.rawdata_store}' not (yet) supported.")
+        raise TypeError(f"Raw data store '{cfg.rawdata_store}' not (yet) supported. Please check your configuration "
+                        f"filename: {cfg.filename}.")
     if cfg.metadata_datastore == "rdf_file_db":
         rdf_file_store = RDFFileStore()
         for filename in cfg.metadata_directory.glob("*.jsonld"):
@@ -149,7 +156,19 @@ def connect_to_database() -> OpenCeFaDB:
         for filename in cfg.metadata_directory.glob("*.ttl"):
             rdf_file_store.upload_file(filename)
         store_manager.add_store("rdf_db", rdf_file_store)
+    elif cfg.metadata_datastore.lower() == "local_graphdb":
+        from opencefadb.database.stores.rdf_stores.graphdb import GraphDBStore
+        graphdb_store = GraphDBStore(
+            host=cfg["graphdb.host"],
+            port=cfg["graphdb.port"],
+            user=cfg["graphdb.user"],
+            password=cfg["graphdb.password"],
+            repository=cfg["graphdb.repository"]
+        )
+        store_manager.add_store("rdf_db", graphdb_store)
     else:
-        raise TypeError(f"Metadata store {cfg.metadata_datastore} not supported.")
+        raise TypeError(f"Metadata store '{cfg.metadata_datastore}' not supported. Please check your configuration "
+                        f"filename: {cfg.filename}.")
     _db_instance = OpenCeFaDB(store_manager)
+    cfg.select_profile(profile)
     return _db_instance

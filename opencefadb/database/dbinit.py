@@ -97,7 +97,7 @@ def download_metadata_datasets(
             if identifier.startswith("http"):
                 identifier = identifier.rsplit('.', 1)[-1]
             filename = pathlib.Path(download_url.rsplit('/', 1)[-1])
-            target_filename = download_dir / f"{filename.stem}{identifier}{filename.suffix}"
+            target_filename = download_dir / f"{filename.stem}_{identifier}{filename.suffix}"
             target_filenames.append(target_filename)
             filenames.append(target_filename)
             if n_threads == 1:

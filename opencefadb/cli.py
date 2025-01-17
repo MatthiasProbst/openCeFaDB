@@ -70,9 +70,7 @@ def config(log_level, profile):
     click.echo(cfg)
 
 
-@cli.command(help="Initialize the database. This will download all metadata from Zenodo.")
-def init():
-    click.echo('Initializing database...')
+def _initialize_database():
     stp = configuration.get_setup()
     cfg = configuration.get_config()
     cfg.select_profile(stp.profile)
@@ -92,12 +90,19 @@ def init():
     logger.debug("Downloading all metadata from zenodo...")
     from opencefadb.database.dbinit import initialize_database
     initialize_database(cfg.metadata_directory)
+
+
+@cli.command(help="Initialize the database. This will download all metadata from Zenodo.")
+def init():
+    click.echo('Initializing database...')
+    _initialize_database()
     click.echo("...done")
 
 
 @cli.command()
 @click.option('-y', is_flag=True, default=False, help="Answer yes to all questions")
-def reset(y):
+@click.option('--init', is_flag=True, default=False, help="Automatically calls `opencefadb init` afterwards")
+def reset(y, init):
     if y:
         reset_answer = True
     else:
@@ -119,6 +124,10 @@ def reset(y):
         stp.delete()
         logger.debug("Done.")
         click.echo("Database reset! Call 'opencefadb init' to reinitialize the database")
+        if init:
+            click.echo("Calling 'opencefadb init'...")
+            _initialize_database()
+
     else:
         click.echo('Aborted...')
 

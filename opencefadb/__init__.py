@@ -1,3 +1,13 @@
+"""Open Centrifugal Fan Database.
+
+OpenCeFaDB is a database for centrifugal fan data. It is designed to store and retrieve data from different sources
+and provide a common interface to access the data. The database is based on the Generic Linked Database (GLDB)
+framework and uses a combination of SQL or NoSQL databases to store large amounts of raw data and RDF databases
+to store the metadata.
+
+Users can choose which specific database to use. There are some predefined configurations available, but users can
+define their own database interfaces, leaving room for integration with their own workflows and databases.
+"""
 import logging
 import pathlib
 from logging.handlers import RotatingFileHandler

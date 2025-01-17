@@ -2,6 +2,8 @@ import logging
 import pathlib
 
 import rdflib
+from rdflib import Graph
+from rdflib.plugins.stores.sparqlstore import SPARQLStore
 
 from .request_utils import _post_request
 
@@ -17,6 +19,9 @@ class GraphDBRepository:
 
     def __init__(self, params):
         self._params = params
+        store = SPARQLStore(auth=self._params["auth"])
+        store.open(self._params["uri"])
+        self.graph = Graph(store=store, identifier=None, bind_namespaces="none")
 
     def __getitem__(self, item):
         return self._params[item]

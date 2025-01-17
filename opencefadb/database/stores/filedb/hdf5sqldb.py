@@ -3,9 +3,11 @@ import logging
 import pathlib
 import sqlite3
 
+import rdflib
 from gldb import RawDataStore
 from gldb.query import RawDataStoreQuery, QueryResult
 
+from opencefadb.database.stores.filedb.database_resource import DatabaseResource
 from opencefadb.ontologies import dcat
 
 logger = logging.getLogger("opencefadb")
@@ -40,8 +42,9 @@ class HDF5SqlDB(RawDataStore):
     def __repr__(self):
         return f"<{self.__class__.__name__} (Endpoint URL={self._endpointURL})>"
 
-    def upload_file(self, filename):
-        return self._insert_hdf5_reference(self._connection, filename)
+    def upload_file(self, filename) -> DatabaseResource:
+        _id = self._insert_hdf5_reference(self._connection, filename)
+        return DatabaseResource(_id, metadata=self.generate_mapping_dataset(str(_id)))
 
     def execute_query(self, query: SQLQuery) -> QueryResult:
         cursor = self._connection.cursor()
@@ -70,6 +73,12 @@ class HDF5SqlDB(RawDataStore):
         conn.commit()
         return conn
 
+    def reset(self):
+        logger.info(f"Resetting the database. Dropping table {self._hdf5_file_table_name}.")
+        cursor = self._connection.cursor()
+        cursor.execute(f"DROP TABLE {self._hdf5_file_table_name}")
+        self._initialize_database(self._db_path)
+
     @classmethod
     def _insert_hdf5_reference(cls, conn, filename, metadata=None):
         filename = pathlib.Path(filename).resolve().absolute()
@@ -81,7 +90,9 @@ class HDF5SqlDB(RawDataStore):
             VALUES (?, ?)
             """, (str(filename), metadata_dump))
             conn.commit()
+            generated_id = cursor.lastrowid
             logger.debug(f"File {filename} inserted successfully.")
+            return generated_id
         except sqlite3.IntegrityError:
             logger.error(f"File {filename} already exists.")
 
@@ -91,17 +102,16 @@ class HDF5SqlDB(RawDataStore):
             self._connection.close()
             logger.debug("Database connection closed.")
 
-    def generate_mapping_dataset(self, identifier):
+    def generate_mapping_dataset(self, identifier: str):
         endpoint_url = self._endpointURL
         endpoint_url_file_name = endpoint_url.rsplit('/', 1)[-1]
         dataservice_id = f"{self._sql_base_uri}{endpoint_url_file_name}"
-
         data_service = dcat.DataService(
             id=dataservice_id,
             title="sqlite3 Database",
             endpointURL=endpoint_url,
             servesDataset=dcat.Dataset(
-                id=f"{self._sql_base_uri}12345",
+                id=f"{self._sql_base_uri}table/{self._hdf5_file_table_name}",
                 title=f"SQL Table '{self._hdf5_file_table_name}'",
                 identifier=self._hdf5_file_table_name,
                 distribution=dcat.Distribution(
@@ -111,4 +121,4 @@ class HDF5SqlDB(RawDataStore):
                 )
             )
         )
-        return data_service
+        return rdflib.Graph().parse(data=data_service.model_dump_jsonld(), format="json-ld")

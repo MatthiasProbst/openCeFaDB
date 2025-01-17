@@ -33,14 +33,14 @@ def _post_request(*args, **kwargs):
 class GraphDB:
 
     def __init__(self, url: str, auth=(None, None)):
-        self._repositories = None
         self._auth = auth
         self._url = url
+        self._repositories = None
 
     def __getitem__(self, item) -> GraphDBRepository:
-        repositories = self.repositories
-        repo = GraphDBRepository(repositories[item])
-        repo._params.update({"auth": self._auth})
+        selected_repo = self.repositories[item]
+        selected_repo.update({"auth": self._auth})
+        repo = GraphDBRepository(selected_repo)
         return repo
 
     @property

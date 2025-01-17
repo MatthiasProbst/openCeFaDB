@@ -14,7 +14,7 @@ def _get_default_database_config():
     return {
         "metadata_dir": paths['global_package_dir'] / 'database/metadata',
         "rawdata_dir": paths['global_package_dir'] / 'database/rawdata',
-        "rawdata_store": "hdf5_file_db",
+        "rawdata_store": "hdf5_sql_db",
         "metadata_store": "rdf_file_db",
         "log_level": str(logging.ERROR),
         "log_file": paths['global_package_dir'] / 'opencefadb.log',
@@ -23,7 +23,7 @@ def _get_default_database_config():
 
 def _get_test_config():
     return {
-        "rawdata_store": "hdf5_file_db",
+        "rawdata_store": "hdf5_sql_db",
         "metadata_store": "rdf_file_db",
         "log_level": str(logging.DEBUG)
     }
@@ -31,13 +31,14 @@ def _get_test_config():
 
 def _get_test_local_graphdb():
     return {
-        "rawdata_store": "local_graphdb",
+        "rawdata_store": "hdf5_sql_db",
+        "metadata_store": "local_graphdb",
         "log_level": str(logging.DEBUG),
         "graphdb.host": "localhost",
         "graphdb.port": "7201",
         "graphdb.user": "admin",
         "graphdb.password": "admin",
-        "graphdb.database": "test",
+        "graphdb.repository": "test",
     }
 
 
@@ -52,8 +53,9 @@ def _get_test_local_sql():
 
 class OpenCeFaDBConfiguration:
 
-    def __init__(self, configparser: configparser.ConfigParser):
+    def __init__(self, configparser: configparser.ConfigParser, filename: pathlib.Path):
         self._configparser = configparser
+        self.filename = filename
         stp = get_setup()
         self.profile = stp.profile
 
@@ -67,15 +69,20 @@ class OpenCeFaDBConfiguration:
         return out
 
     def delete(self):
+        global _config
         _bak = paths["config"].with_suffix(".ini.bak")
         if _bak.exists():
             _bak.unlink()
         paths["config"].rename(paths["config"].with_suffix(".ini.bak"))
-        return self
+        _config = None
+        return get_config()
 
     @property
     def setup(self):
         return get_setup().profile
+
+    def keys(self):
+        return self._configparser[self.profile].keys()
 
     def select_profile(self, profile: str):
         if profile not in self._configparser:
@@ -84,10 +91,10 @@ class OpenCeFaDBConfiguration:
         self.profile = profile
 
     def __getitem__(self, item):
-        return self._configparser[item]
+        return self._configparser[self.profile][item]
 
     def __contains__(self, item):
-        return item in self._configparser
+        return item in self._configparser[self.profile]
 
     def _set_config(self, section: Union[str], key, value):
         """Set a configuration value."""
@@ -142,7 +149,7 @@ def get_config(overwrite: bool = False) -> OpenCeFaDBConfiguration:
     logger.debug(f"Initializing config file {paths['config']}...")
     if paths["config"].exists() and not overwrite:
         logger.debug(f"Config file {paths['config']} already exists")
-        _config = OpenCeFaDBConfiguration(_read_config())
+        _config = OpenCeFaDBConfiguration(_read_config(), paths["config"])
         return _config
 
     config = configparser.ConfigParser()
@@ -152,7 +159,7 @@ def get_config(overwrite: bool = False) -> OpenCeFaDBConfiguration:
     config["local_sql.test"] = _get_test_local_sql()
     with open(paths["config"], 'w') as f:
         config.write(f)
-    _config = OpenCeFaDBConfiguration(config)
+    _config = OpenCeFaDBConfiguration(config, paths["config"])
     return _config
 
 
