@@ -4,12 +4,13 @@ import pathlib
 import rdflib
 from gldb.query.query import QueryResult
 from gldb.query.rdfstorequery import SparqlQuery
-from gldb.stores import RDFStore
+
+from ..abstracts import OpenCeFaDBRDFStore
 
 logger = logging.getLogger("opencefadb")
 
 
-class RDFFileStore(RDFStore):
+class RDFFileStore(OpenCeFaDBRDFStore):
 
     def __init__(self):
         self._filenames = []
@@ -62,3 +63,8 @@ class RDFFileStore(RDFStore):
                 self._graphs[filename] = g
             combined_graph += g
         return combined_graph
+
+    def reset(self, *args, **kwargs):
+        self._filenames = []
+        self._graphs = {}
+        return self

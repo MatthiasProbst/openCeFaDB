@@ -3,8 +3,6 @@ import pathlib
 from gldb.query.rdfstorequery import SparqlQuery
 
 from opencefadb import connect_to_database
-from opencefadb import paths
-
 from opencefadb.configuration import get_config
 from opencefadb.database.dbinit import initialize_database
 
@@ -40,9 +38,12 @@ def reset_database():
     cfg = get_config()
     initialize_database(cfg.metadata_directory)
 
+
 _CONTEXT = {
     "local": "http://local.org/"
 }
+
+
 def add_opm_files():
     root_dir = __this_dir__ / "../../data/measurements/processed/opm/main_cases"
     assert root_dir.is_dir(), f"{root_dir} does not exist."

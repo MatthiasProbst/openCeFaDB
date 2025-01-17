@@ -15,6 +15,8 @@ from typing import Union
 
 import appdirs
 
+__this_dir__ = pathlib.Path(__file__).parent
+
 from ._version import __version__
 
 USER_LOG_DIR = pathlib.Path(appdirs.user_log_dir('opencefadb', version=__version__))
@@ -63,5 +65,7 @@ def set_logging_level(level: Union[int, str]):
 
 
 from .database import connect_to_database
+
+GRAPH_DB_CONFIG_FILENAME = __this_dir__ / "../data/graphdb-config.ttl"
 
 __all__ = ['connect_to_database', 'set_logging_level']

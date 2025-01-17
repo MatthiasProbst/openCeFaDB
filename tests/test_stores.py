@@ -1,12 +1,17 @@
+import pathlib
 import sqlite3
 import unittest
 
 from pydantic import AnyUrl
 
 from opencefadb import set_logging_level
+from opencefadb.database.query_templates.sparql import SELECT_ALL
 from opencefadb.database.stores.filedb.hdf5sqldb import HDF5SqlDB
+from opencefadb.database.stores.rdf_stores.graphdb import GraphDBStore
 
 set_logging_level('DEBUG')
+
+__this_dir__ = pathlib.Path(__file__).parent
 
 
 class TestStores(unittest.TestCase):
@@ -22,3 +27,28 @@ class TestStores(unittest.TestCase):
         for row in rows:
             print(row)
         conn.close()
+
+    def test_graphdb_store(self):
+        """Make sure you configured your graphdb accordingly.
+        """
+        repoId = GraphDBStore.create(
+            config_filename=__this_dir__ / "repo-config.ttl",
+            host="http://localhost",
+            port=7201
+        )
+
+        store = GraphDBStore(
+            host="localhost",
+            port=7201,
+            user="admin",
+            password="admin",
+            repository=repoId
+        )
+
+        results = store.execute_query(
+            SELECT_ALL
+        )
+        self.assertEqual(70, len(results.result))
+
+
+        GraphDBStore.delete(repoId, host="localhost", port=7201, auth=("admin", "admin"))

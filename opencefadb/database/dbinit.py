@@ -51,13 +51,12 @@ def initialize_database(metadata_directory):
 
     logger.debug("Init the opencefadb...")
     db = connect_to_database()
-    rdf_file_store = db["rdf_db"]
 
     cfg = get_config()
     for filename in cfg.metadata_directory.glob("*.jsonld"):
-        rdf_file_store.upload_file(filename)
+        db.rdf.upload_file(filename)
     for filename in cfg.metadata_directory.glob("*.ttl"):
-        rdf_file_store.upload_file(filename)
+        db.rdf.upload_file(filename)
     logger.debug("...done")
     return filenames
 

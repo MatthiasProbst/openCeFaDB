@@ -52,6 +52,14 @@ class OpenCeFaDB(GenericLinkedDatabase):
     def store_manager(self) -> DataStoreManager:
         return self._store_manager
 
+    @property
+    def rdf(self) -> RDFFileStore:
+        return self.store_manager["rdf_db"]
+
+    @property
+    def hdf(self) -> Any:
+        return self.store_manager["hdf_db"]
+
     def upload_hdf(self, filename: pathlib.Path):
         """Uploads a file to all stores in the store manager. Not all stores may support this operation.
         This is then skipped."""
@@ -136,9 +144,11 @@ class OpenCeFaDB(GenericLinkedDatabase):
 def connect_to_database(profile="DEFAULT") -> OpenCeFaDB:
     """Connects to the database according to the configuration."""
     global _db_instance
-    if _db_instance:
-        return _db_instance
     cfg = get_config()
+    if cfg.profile == profile:
+        if _db_instance:
+            return _db_instance
+    cfg.select_profile(profile)
     store_manager = DataStoreManager()
     if cfg.rawdata_store == "hdf5_file_db":
         from opencefadb.database.stores.filedb.hdf5filedb import HDF5FileDB
